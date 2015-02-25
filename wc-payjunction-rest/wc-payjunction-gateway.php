@@ -21,16 +21,15 @@ function payjunction_rest_init() {
         public function __construct() {
             $this->id = 'payjunctionrest';
             $this->method_title = __('PayJunction REST', 'woothemes');
-            //$this->icon = plugins_url('images/pjLogoBlack160x40.png', __FILE__);
             $this->has_fields = true;
             $this->supports = array('refunds');
-            $this->view_transaction_url = 'https://www.payjunctionlabs.com/trinity/virtualterminal/transaction/view.action?txn.txnTransactionId=%s';
+            
             $this->init_form_fields();
             $this->init_settings();
             $this->title = $this->settings['title'];
             $this->description = $this->settings['description'];
             $this->show_description = $this->settings['showdescription'] == 'yes' ? true : false;
-            $this->testmode = $this->settings['testmode'];
+            $this->testmode = $this->settings['testmode'] == 'yes' ? true : false;
             $this->cvvmode = $this->settings['cvvmode'] == 'no' ? true : false;
             $this->localavs = $this->settings['uselocalavs'] == 'yes' ? true : false;
             $this->avsmode = $this->settings['avsmode'];
@@ -46,12 +45,14 @@ function payjunction_rest_init() {
                 $this->password = $this->settings['password'];
                 $this->url = 'https://api.payjunction.com/transactions';
                 $this->appkey = '639ff34b-d729-48cc-9f99-6e099543bb66';
+                $this->view_transaction_url = 'https://www.payjunctionlabs.com/trinity/virtualterminal/transaction/view.action?txn.txnTransactionId=%s';
             } else {
                 // Change the login and password settings below to use a custom login for payjunctionlabs.com
                 $this->login = 'pj-ql-01';
                 $this->password = 'pj-ql-01p';
                 $this->url = 'https://api.payjunctionlabs.com/transactions';
                 $this->appkey = '81998712-17e5-4345-a7cb-374ad1757392';
+                $this->view_transaction_url = 'https://www.payjunction.com/trinity/virtualterminal/transaction/view.action?txn.txnTransactionId=%s';
             }
             
             // See if we're doing Authorization Only
@@ -502,7 +503,7 @@ function payjunction_rest_init() {
 				if (strcmp($resp_code, '00') == 0 || strcmp($resp_code, '85') == 0) {
 					// Successful Payment
 					$success_note = __('Credit Card/Debit Card payment completed', 'woothemes');
-					if ($this->salemethod == "HOLD") $order->add_order_note(__("Don't forget to Capture or Void the transaction in PayJunction!", 'woothemes'));
+					if ($this->salemethod == "HOLD") $order->add_order_note(__("<strong>Don't forget to Capture or Void the transaction in PayJunction!</strong>", 'woothemes'));
 					if ($this->dynavsmode) {
 						// See what the results were for AVS check
 						$address = $content['response']['processor']['avs']['match']['ADDRESS'];
@@ -610,7 +611,6 @@ function payjunction_rest_init() {
             }
             
             $post = http_build_query($refund_request);
-            $order->add_order_note($post);
             $content = $this->process_rest_request('POST', $post);
             
             if (isset($content['transactionId'])) { // Valid transaction
