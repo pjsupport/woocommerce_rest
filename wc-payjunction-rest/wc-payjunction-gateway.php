@@ -401,6 +401,17 @@ function payjunction_rest_init() {
             
         }
         
+        function set_fraud_hold($order, $transactionId, $note) {
+        	global $woocommerce;
+        	$order->update_status('on-hold', $note);
+			if ($this->salemethod != 'HOLD') { 
+				$this->set_payjunction_hold($transactionId);
+				$order->add_order_note(__("Don't forget to Capture or Void the transaction in PayJunction!", 'woothemes'));
+			}
+			$order->reduce_order_stock();
+			$woocommerce->cart->empty_cart();
+        }
+        
         function process_payment($order_id) {
             if (!$this->validate_fields()) return;
             global $woocommerce;
@@ -490,78 +501,52 @@ function payjunction_rest_init() {
 				$resp_code = $content['response']['code'];
 				if (strcmp($resp_code, '00') == 0 || strcmp($resp_code, '85') == 0) {
 					// Successful Payment
+					$success_note = __('Credit Card/Debit Card payment completed', 'woothemes');
 					if ($this->salemethod == "HOLD") $order->add_order_note(__("Don't forget to Capture or Void the transaction in PayJunction!", 'woothemes'));
 					if ($this->dynavsmode) {
 						// See what the results were for AVS check
 						$address = $content['response']['processor']['avs']['match']['ADDRESS'];
 						$zip = $content['response']['processor']['avs']['match']['ZIP'];
 						$note = __(sprintf('Placed on Hold Status due to Address Match: %s and Zip Match: %s (Dynamic AVS)', $address == true ? 'true' : 'false', $zip == true ? 'true' : 'false'), 'woothemes');
+						// Set payment complete with the transaction ID
+						$order->payment_complete($transactionId);
 						// See what AVS mode we're in and compare accordingly
 						if ($this->avsmode == 'ADDRESS_AND_ZIP') {
 							if ($address && $zip) {
-								$order->add_order_note(__('Credit Card/Debit Card payment completed', 'woothemes'));
+								$order->add_order_note($success_note);
 								if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
-								$order->payment_complete($transactionId);
 							} else {
-								$order->update_status('on-hold', $note);
-								if ($this->salemethod != 'HOLD') { 
-									$this->set_payjunction_hold($transactionId);
-									$order->add_order_note(__("Don't forget to Capture or Void the transaction in PayJunction!", 'woothemes'));
-								}
-								$order->reduce_order_stock();
-								$woocommerce->cart->empty_cart();
+								$this->set_fraud_hold($order, $transactionId, $note);
 							}
 						} elseif ($this->avsmode == 'ADDRESS_OR_ZIP') {
 							if ($address || $zip) {
-								$order->add_order_note(__('Credit Card/Debit Card payment completed', 'woothemes'));
+								$order->add_order_note($success_note);
 								if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
-								$order->payment_complete($transactionId);
 							} else {
-								$order->update_status('on-hold', $note);
-								if ($this->salemethod != 'HOLD') { 
-									$this->set_payjunction_hold($transactionId);
-									$order->add_order_note(__("Don't forget to Capture or Void the transaction in PayJunction!", 'woothemes'));
-								}
-								$order->reduce_order_stock();
-								$woocommerce->cart->empty_cart();
+								$this->set_fraud_hold($order, $transactionId, $note);
 							}
 						} elseif ($this->avsmode == 'ADDRESS') {
 							if ($address) {
-								$order->add_order_note(__('Credit Card/Debit Card payment completed', 'woothemes'));
+								$order->add_order_note($success_note);
 								if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
-								$order->payment_complete($transactionId);
 							} else {
-								$order->update_status('on-hold', __(sprintf('Placed on Hold Status due to Address Match: %s (Dynamic AVS)', $address == true ? 'true' : 'false'), 'woothemes'));
-								if ($this->salemethod != 'HOLD') { 
-									$this->set_payjunction_hold($transactionId);
-									$order->add_order_note(__("Don't forget to Capture or Void the transaction in PayJunction!", 'woothemes'));
-								}
-								$order->reduce_order_stock();
-								$woocommerce->cart->empty_cart();
+								$this->set_fraud_hold($order, $transactionId, __(sprintf('Placed on Hold Status due to Address Match: %s (Dynamic AVS)', $address == true ? 'true' : 'false'), 'woothemes'));
 							}
 						} elseif ($this->avsmode == 'ZIP') {
 							if ($zip) {
-								$order->add_order_note(__('Credit Card/Debit Card payment completed', 'woothemes'));
+								$order->add_order_note($success_note);
 								if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
-								$order->payment_complete($transactionId);
 							} else {
-								$order->update_status('on-hold', __(sprintf('Placed on Hold Status due to Zip Match: %s (Dynamic AVS)', $zip == true ? 'true' : 'false'), 'woothemes'));
-								if ($this->salemethod != 'HOLD') { 
-									$this->set_payjunction_hold($transactionId);
-									$order->add_order_note(__("Don't forget to Capture or Void the transaction in PayJunction!", 'woothemes'));
-								}
-								$order->reduce_order_stock();
-                                $woocommerce->cart->empty_cart();
+								$this->set_fraud_hold($order, $transactionId, __(sprintf('Placed on Hold Status due to Zip Match: %s (Dynamic AVS)', $zip == true ? 'true' : 'false'), 'woothemes'));
 							}
 						} else {
-							$order->add_order_note(__('Credit Card/Debit Card payment completed', 'woothemes'));
+							$order->add_order_note($success_note);
 							if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
-							$order->payment_complete($transactionId);
 						}
 						if ($this->requestsignature) $this->send_pj_email($order, $transactionId);
 						return array('result' => 'success', 'redirect' => $this->get_return_url($order));
 					} else {
-						$order->add_order_note(__('Credit Card/Debit Card payment completed', 'woothemes'));
+						$order->add_order_note($success_note);
 						if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
 						$order->payment_complete($transactionId);
 						
