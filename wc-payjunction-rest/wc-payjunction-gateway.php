@@ -496,12 +496,13 @@ function payjunction_rest_init() {
 						$address = $content['response']['processor']['avs']['match']['ADDRESS'];
 						$zip = $content['response']['processor']['avs']['match']['ZIP'];
 						$note = __(sprintf('Placed on Hold Status due to Address Match: %s and Zip Match: %s (Dynamic AVS)', $address == true ? 'true' : 'false', $zip == true ? 'true' : 'false'), 'woothemes');
+						// Set payment complete with the transaction ID
+						$order->payment_complete($transactionId);
 						// See what AVS mode we're in and compare accordingly
 						if ($this->avsmode == 'ADDRESS_AND_ZIP') {
 							if ($address && $zip) {
 								$order->add_order_note(__('Credit Card/Debit Card payment completed', 'woothemes'));
 								if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
-								$order->payment_complete($transactionId);
 							} else {
 								$order->update_status('on-hold', $note);
 								if ($this->salemethod != 'HOLD') { 
@@ -515,7 +516,6 @@ function payjunction_rest_init() {
 							if ($address || $zip) {
 								$order->add_order_note(__('Credit Card/Debit Card payment completed', 'woothemes'));
 								if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
-								$order->payment_complete($transactionId);
 							} else {
 								$order->update_status('on-hold', $note);
 								if ($this->salemethod != 'HOLD') { 
@@ -529,7 +529,6 @@ function payjunction_rest_init() {
 							if ($address) {
 								$order->add_order_note(__('Credit Card/Debit Card payment completed', 'woothemes'));
 								if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
-								$order->payment_complete($transactionId);
 							} else {
 								$order->update_status('on-hold', __(sprintf('Placed on Hold Status due to Address Match: %s (Dynamic AVS)', $address == true ? 'true' : 'false'), 'woothemes'));
 								if ($this->salemethod != 'HOLD') { 
@@ -543,7 +542,6 @@ function payjunction_rest_init() {
 							if ($zip) {
 								$order->add_order_note(__('Credit Card/Debit Card payment completed', 'woothemes'));
 								if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
-								$order->payment_complete($transactionId);
 							} else {
 								$order->update_status('on-hold', __(sprintf('Placed on Hold Status due to Zip Match: %s (Dynamic AVS)', $zip == true ? 'true' : 'false'), 'woothemes'));
 								if ($this->salemethod != 'HOLD') { 
@@ -556,7 +554,6 @@ function payjunction_rest_init() {
 						} else {
 							$order->add_order_note(__('Credit Card/Debit Card payment completed', 'woothemes'));
 							if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
-							$order->payment_complete($transactionId);
 						}
 						if ($this->requestsignature) $this->send_pj_email($order, $transactionId);
 						return array('result' => 'success', 'redirect' => $this->get_return_url($order));
