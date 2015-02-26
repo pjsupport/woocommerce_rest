@@ -34,6 +34,8 @@ function payjunction_rest_init() {
             $this->localavs = $this->settings['uselocalavs'] == 'yes' ? true : false;
             $this->avsmode = $this->settings['avsmode'];
             $this->dynavsmode = $this->settings['dynamicavsmode'] == 'yes' ? true : false;
+            $this->fraudmsgenabled = $this->settings['fraudmsgenabled'] == 'yes' ? true : false;
+            $this->fraudmsgtext = $this->settings['fraudmsgtext'];
             $this->requestsignature = $this->settings['requestsignature'] == 'yes' ? true : false;
             $this->signotificationemail = $this->settings['signotificationemail'];
             $this->msg['message'] = '';
@@ -151,6 +153,16 @@ function payjunction_rest_init() {
                         				Capture in the PayJunction website as well as in WooCommerce if you choose to move forward with the order.</strong>",
     				'type' => 'checkbox',
     				'default' => 'no'),
+				'fraudmsgenabled' => array(
+					'title' => 'Enable Fraud Special Response',
+					'description' => 'When enabled, send a special message instead of simply saying "Transaction Declined" to prevent multiple card authorizations.',
+					'type' => 'checkbox',
+					'default' => 'yes'),
+				'fraudmsgtext' => array(
+					'title' => 'Fraud Special Response Text',
+					'description' => 'Customize the message given for fraud declines.',
+					'type' => 'textarea',
+					'default' => 'Payment error, before attempting to process again please contact us directly for assistance.'),
 				'requestsignature' => array(
 				    'title' => 'Email Signature Request',
 				    'description' => 'Tells PayJunction to email a copy of the receipt with a request to sign for the purchase.',
@@ -572,8 +584,8 @@ function payjunction_rest_init() {
 					$order->add_order_note( $cancelNote );
 					// To (again) try and prevent multiple attempts when the decline is for AVS/CVV mismatch, use different error messages
 					
-					if ($this->is_fraud_decline($resp_code)) {
-						wc_add_notice(__('Payment error, before attempting to process again please contact us directly for assistance.', 'woothemes'), 'error');
+					if ($this->is_fraud_decline($resp_code) && $this->fraudmsgenabled) {
+						wc_add_notice($this->fraudmsgtext, 'error');
 						return;
 					} else {
 						wc_add_notice(__('Transaction Declined.', 'woothemes'), 'error');
