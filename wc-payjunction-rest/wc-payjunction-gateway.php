@@ -195,6 +195,12 @@ function payjunction_rest_init() {
         			    ?>
         			    jQuery('body').append('<?php echo $no_ssl ?>');
         			    <?php
+    			    } 
+    			    if (!function_exists('curl_version')) {
+    			    	$no_curl = '<div class="error"><p>The cURL extension for PHP is not installed and transactions will not run!</p></div>';
+    			    	?>
+    			    	jQuery('body').append('<?php echo $no_curl ?>');
+    			    	<?php
     			    } ?>
     			    
     			    // Add test button for API credentials
@@ -407,7 +413,7 @@ function payjunction_rest_init() {
         	$order->update_status('on-hold', $note);
 			if ($this->salemethod != 'HOLD') { 
 				$this->set_payjunction_hold($transactionId);
-				$order->add_order_note(__("Don't forget to Capture or Void the transaction in PayJunction!", 'woothemes'));
+				$order->add_order_note(__("<strong>Don't forget to Capture or Void the transaction in PayJunction!<strong>", 'woothemes'));
 			}
 			$order->reduce_order_stock();
 			$woocommerce->cart->empty_cart();
