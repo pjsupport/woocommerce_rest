@@ -23,4 +23,5 @@ Installation Instructions:
       2) Don't have your API credentials? See this guide: <placeholder>
     b. SUGGESTED: Not familiar with Address Verification Security? Read our guide here: <placeholder>
     c. SUGGESTED: For a full description for each setting see our guide here: <placeholder>
-  8. It is recommended to do a test transaction through the shopping cart and verify the transaction shows up in         your batch in the PayJunction website.
+  8. It is recommended to do a test transaction through the shopping cart and verify the transaction shows up in 
+      your batch in the PayJunction website.
