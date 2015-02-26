@@ -45,14 +45,14 @@ function payjunction_rest_init() {
                 $this->password = $this->settings['password'];
                 $this->url = 'https://api.payjunction.com/transactions';
                 $this->appkey = '639ff34b-d729-48cc-9f99-6e099543bb66';
-                $this->view_transaction_url = 'https://www.payjunctionlabs.com/trinity/virtualterminal/transaction/view.action?txn.txnTransactionId=%s';
+                $this->view_transaction_url = 'https://www.payjunction.com/trinity/virtualterminal/transaction/view.action?txn.txnTransactionId=%s';
             } else {
                 // Change the login and password settings below to use a custom login for payjunctionlabs.com
                 $this->login = 'pj-ql-01';
                 $this->password = 'pj-ql-01p';
                 $this->url = 'https://api.payjunctionlabs.com/transactions';
                 $this->appkey = '81998712-17e5-4345-a7cb-374ad1757392';
-                $this->view_transaction_url = 'https://www.payjunction.com/trinity/virtualterminal/transaction/view.action?txn.txnTransactionId=%s';
+                $this->view_transaction_url = 'https://www.payjunctionlabs.com/trinity/virtualterminal/transaction/view.action?txn.txnTransactionId=%s';
             }
             
             // See if we're doing Authorization Only
