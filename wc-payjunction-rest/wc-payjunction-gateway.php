@@ -126,7 +126,7 @@ function payjunction_rest_init() {
 			    'avsmode' => array(
 			        'title' => 'Address Verification Security',
 			        'description' => "This tells PayJunction what conditions to automatically void a transaction under depending on if the street address and/or zip code match
-            							(if Dynamic Bypass Mode is not selected below) or put on Hold status (if Dynamic AVS Mode is enabled).
+            							(if Dynamic AVS Mode is not selected below) or put on Hold status (if Dynamic AVS Mode is enabled).
             							Please note, voids take approximately 1-2 business days to be processed by the customer's bank.
             							<ul>
             							<li>Address AND Zip: Require BOTH match</li>
