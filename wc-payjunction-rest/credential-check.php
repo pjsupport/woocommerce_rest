@@ -1,4 +1,9 @@
 <?php
+    // Test to make sure we have cURL installed before proceeding further
+    if (!function_exists('curl_version')) {
+    	echo json_encode(array('status' => 'error', 'type' => 'curl', 'message' => 'cURL and/or the PHP bindings for cURL are not installed. Please fix and try again.'));
+    	return;
+    }
     
     if (isset($_POST['login']) && isset($_POST['pass'])) {
         $url = 'https://api.payjunction.com/transactions/1';
