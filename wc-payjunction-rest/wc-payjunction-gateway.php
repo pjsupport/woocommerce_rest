@@ -256,7 +256,8 @@ function payjunction_rest_init() {
         function payment_fields() {
 			if ($this->description && $this->show_description) {
 				echo wpautop(wptexturize($this->description));
-			} 
+			}
+			if ($this->testmode) echo '<span style="color:red;">The PayJunction module is currently in testing mode, the credit card will not actually be charged.</span>';
 			?>
 			<fieldset>
 				<p>
