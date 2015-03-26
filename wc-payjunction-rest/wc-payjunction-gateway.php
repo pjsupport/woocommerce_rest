@@ -534,34 +534,34 @@ function payjunction_rest_init() {
 						if ($this->avsmode == 'ADDRESS_AND_ZIP') {
 							if ($address && $zip) {
 								$order->add_order_note($success_note);
-								if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
+								if (!empty($transactionId)) update_post_meta($order->id, '_transaction_id', $transactionId);
 							} else {
 								$this->set_fraud_hold($order, $transactionId, $note);
 							}
 						} elseif ($this->avsmode == 'ADDRESS_OR_ZIP') {
 							if ($address || $zip) {
 								$order->add_order_note($success_note);
-								if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
+								if (!empty($transactionId)) update_post_meta($order->id, '_transaction_id', $transactionId);
 							} else {
 								$this->set_fraud_hold($order, $transactionId, $note);
 							}
 						} elseif ($this->avsmode == 'ADDRESS') {
 							if ($address) {
 								$order->add_order_note($success_note);
-								if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
+								if (!empty($transactionId)) update_post_meta($order->id, '_transaction_id', $transactionId);
 							} else {
 								$this->set_fraud_hold($order, $transactionId, __(sprintf('Placed on Hold Status due to Address Match: %s (Dynamic AVS)', $address == true ? 'true' : 'false'), 'woothemes'));
 							}
 						} elseif ($this->avsmode == 'ZIP') {
 							if ($zip) {
 								$order->add_order_note($success_note);
-								if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
+								if (!empty($transactionId)) update_post_meta($order->id, '_transaction_id', $transactionId);
 							} else {
 								$this->set_fraud_hold($order, $transactionId, __(sprintf('Placed on Hold Status due to Zip Match: %s (Dynamic AVS)', $zip == true ? 'true' : 'false'), 'woothemes'));
 							}
 						} else {
 							$order->add_order_note($success_note);
-							if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
+							if (!empty($transactionId)) update_post_meta($order->id, '_transaction_id', $transactionId);
 						}
 						if ($this->requestsignature) $this->send_pj_email($order, $transactionId);
 						return array('result' => 'success', 'redirect' => $this->get_return_url($order));
