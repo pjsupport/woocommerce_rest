@@ -24,6 +24,7 @@ function payjunction_rest_init() {
             $this->has_fields = true;
             $this->supports = array('refunds');
             
+            
             $this->init_form_fields();
             $this->init_settings();
             $this->title = $this->settings['title'];
@@ -38,6 +39,8 @@ function payjunction_rest_init() {
             $this->fraudmsgtext = $this->settings['fraudmsgtext'];
             $this->requestsignature = $this->settings['requestsignature'] == 'yes' ? true : false;
             $this->signotificationemail = $this->settings['signotificationemail'];
+            $this->simpleamounts = $this->settings['simpleamount'] == 'yes' ? true : false;
+            $this->dbg = $this->settings['debugging'] == 'yes' ? true : false;
             $this->msg['message'] = '';
             $this->msg['class'] = '';
             
@@ -92,6 +95,11 @@ function payjunction_rest_init() {
                     'description' => 'Enable this mode to prevent live processing of credit cards for testing purposes',
                     'type' => 'checkbox',
                     'default' => 'no'),
+                'debugging' => array(
+                	'title' => 'Enable Debugging Mode',
+                	'description' => 'Enabling this option causes extra information to be logged to the order notes in WooCommerce',
+                	'type' => 'checkbox',
+                	'default' => 'no'),
                 'login' => array(
                     'title' => 'PayJunction API Login Name',
                     'description' => 'Please see our guide <a href="https://company.payjunction.com/pages/viewpage.action?pageId=328435">here</a>
@@ -186,7 +194,13 @@ function payjunction_rest_init() {
                     'title' => 'Payment Option Description',
                     'description' => 'The description for the payment option shown to the customer',
                     'type' => 'textarea',
-                    'default' => 'Pay with your credit or debit card directly through the shopping cart')
+                    'default' => 'Pay with your credit or debit card directly through the shopping cart'),
+                'simpleamounts' => array(
+                	'title' => 'Simple Amounts',
+                	'description' => 'In the event that a third-party plugin causes issues with setting the correct amount you can enable this option
+                	to only fetch the total amount for the order and not attempt to break down the tax and shipping.',
+                	'type' => 'checkbox',
+                	'default' => 'no')
             );
         }
         
@@ -451,9 +465,13 @@ function payjunction_rest_init() {
             if (!$this->validate_fields()) return;
             global $woocommerce;
 			$order = new WC_Order($order_id);
+			
+			if ($this->dbg) $order->add_order_note("Debugging enabled");
 
 			$payjunction_request = array(
 				'amountBase' => $order->get_subtotal(),
+				'amountShipping' => '',
+				'amountTax' => '',
 				'cardNumber' => $_POST['ccnum'],
 				'cardExpMonth' => $_POST['expmonth'],
 				'cardExpYear' => $_POST['expyear'],
@@ -481,35 +499,51 @@ function payjunction_rest_init() {
 			if ($this->localavs) {
 			    $payjunction_request['avs'] = $this->avsmode;
 			}
-			
-			$total_amount += (float)$order->get_subtotal();
-			if ($order->get_total_shipping()) { // Add shipping amount
-				$payjunction_request['amountShipping'] = sprintf("%.2f", $order->get_total_shipping());
-				$total_amount += (float)$order->get_total_shipping();
-			}
-			
-			if ($order->get_cart_tax()) { // Add tax amount
-				$payjunction_request['amountTax'] = sprintf("%.2f", $order->get_cart_tax());
-				$total_amount += $order->get_cart_tax();
-			}
-			
-			if ($order->get_shipping_tax()) { // Add shipping tax
-				$tax = (float)$order->get_cart_tax();
-				$s_tax = (float)$order->get_shipping_tax();
-				$total_tax = $tax + $s_tax;
-				$payjunction_request['amountTax'] = sprintf("%.2f", $total_tax);
-				$total_amount += (float)$order->get_shipping_tax();
-			}
-			
-			// Make sure that we've added everything together by comparing with the total amount we've collected so far
-			if (sprintf("%.2f", $order->get_total()) != sprintf("%.2f", $total_amount)) {
-				// For some reason, we haven't gotten all the costs. Run the base amount as the order total and remove the shipping and tax
-				// to make sure we don't undercharge or overcharge the customer.
-				$payjunction_request['amountTax'] = '';
-				$payjunction_request['amountShipping'] = '';
+			if (!$this->simpleamounts) {
+				$total_amount += (float)$order->get_subtotal();
+				if ($order->get_total_shipping()) { // Add shipping amount
+					$payjunction_request['amountShipping'] = sprintf("%.2f", $order->get_total_shipping());
+					$total_amount += (float)$order->get_total_shipping();
+				}
+				
+				if ($order->get_cart_tax()) { // Add tax amount
+					$payjunction_request['amountTax'] = sprintf("%.2f", $order->get_cart_tax());
+					$total_amount += $order->get_cart_tax();
+				}
+				
+				if ($order->get_shipping_tax()) { // Add shipping tax
+					$tax = (float)$order->get_cart_tax();
+					$s_tax = (float)$order->get_shipping_tax();
+					$total_tax = $tax + $s_tax;
+					$payjunction_request['amountTax'] = sprintf("%.2f", $total_tax);
+					$total_amount += (float)$order->get_shipping_tax();
+				}
+				
+				if ($this->dbg) { 
+					$order->add_order_note("WC order total: " . $order->get_total() . ", WC subtotal: " . $order->get_subtotal()
+																. ", WC shipping: " . $order->get_total_shipping() . ", WC shipping tax: "
+																. $order->get_shipping_tax() . ", WC tax: " . $order->get_cart_tax());
+				}
+				
+				// Make sure that we've added everything together by comparing with the total amount we've collected so far
+				if (sprintf("%.2f", $order->get_total()) != sprintf("%.2f", $total_amount)) {
+					
+					// For some reason, we haven't gotten all the costs. Run the base amount as the order total and remove the shipping and tax
+					// to make sure we don't undercharge or overcharge the customer.
+					$payjunction_request['amountTax'] = '';
+					$payjunction_request['amountShipping'] = '';
+					$payjunction_request['amountBase'] = sprintf("%.2f", $order->get_total());
+					$payjunction_request['note'] .= "\nWooCommerce module was unable to determine the tax and shipping, processed as a total amount instead.";
+					$payjunction_request['note'] .= sprintf("\nOrder Total: %.2f\nComputed Total: %.2f", $order->get_total(), $total_amount);
+				}
+			} else {
+				if ($this->dbg) { $order->add_order_note("WC order total: " . $order->get_total()); }
 				$payjunction_request['amountBase'] = sprintf("%.2f", $order->get_total());
-				$payjunction_request['note'] .= "\nWooCommerce module was unable to determine the tax and shipping, processed as a total amount instead.";
-				$payjunction_request['note'] .= sprintf("\nOrder Total: %.2f\nComputed Total: %.2f", $order->get_total(), $total_amount);
+			}
+			
+			if ($this->dbg) {
+				$order->add_order_note("amountBase: " . $payjunction_request['amountBase']  . " amountShipping: " . $payjunction_request['amountShipping'] 
+										. " amountTax: " . $payjunction_request['amountTax']);
 			}
 			
 			if ($this->dynavsmode) {
@@ -527,7 +561,7 @@ function payjunction_rest_init() {
 			$post = http_build_query($payjunction_request);
 			
 			$content = $this->process_rest_request('POST', $post, null, $order);
-			
+			if ($this->dbg) $order->add_order_note(http_build_query($content));
 			if (isset($content['transactionId'])) { // Valid response
 			    
 				$transactionId = $content['transactionId'];
@@ -645,7 +679,7 @@ function payjunction_rest_init() {
             
             $post = http_build_query($refund_request);
             $content = $this->process_rest_request('POST', $post);
-            
+            if ($this->dbg) $order->add_order_note(http_build_query($content));
             if (isset($content['transactionId'])) { // Valid transaction
                 if ($content['response']['approved']) {
                     return true;
