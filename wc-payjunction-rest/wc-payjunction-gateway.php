@@ -581,7 +581,7 @@ function payjunction_rest_init() {
 						return array('result' => 'success', 'redirect' => $this->get_return_url($order));
 					} else {
 						$order->add_order_note($success_note);
-						if (!empty($order->get_transaction_id())) update_post_meta($order->id, '_transaction_id', $transactionId);
+						if (!empty($transactionId)) update_post_meta($order->id, '_transaction_id', $transactionId);
 						$order->payment_complete($transactionId);
 						
 						// Return thankyou redirect
