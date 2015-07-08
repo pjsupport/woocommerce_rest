@@ -2,7 +2,7 @@
 /*
 Plugin Name: PayJunction Gateway Module for WooCommerce
 Description: Credit Card Processing Module for WooCommerce using the PayJunction REST API
-Version: 1.0
+Version: 1.0d
 Plugin URI: https://company.payjunction.com/support/WooCommerce
 Author: Matthew E. Cooper
 Author URI: https://www.payjunction.com
