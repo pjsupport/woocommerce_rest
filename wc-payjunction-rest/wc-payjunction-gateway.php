@@ -367,7 +367,7 @@ function payjunction_rest_init() {
 			$this->process_rest_request("PUT", $post, $txnid);
 		}
 		
-		function process_rest_request($type, $post=null, $txnid=null) {
+		function process_rest_request($type, $post=null, $txnid=null, $order=null) {
 			
 			$url = !is_null($txnid) ? $this->url."/".$txnid : $this->url;
 			$ch = curl_init();
@@ -375,6 +375,7 @@ function payjunction_rest_init() {
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
 			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+			//curl_setopt($ch, CURLOPT_HEADER, 1);
 			curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json', 'X-PJ-Application-Key: ' . $this->appkey));
 			curl_setopt($ch, CURLOPT_USERPWD, $this->login . ':' . $this->password);
 			switch($type) {
@@ -399,9 +400,23 @@ function payjunction_rest_init() {
 			if ($curl_errno) {
 				$response = array("errors"=>array('message' => "cURL Error - $curl_errno: $curl_error", 'parameter' => 'cURL', 'type' => $curl_errno));
 				return $response;
-			} else {
-				return json_decode($content, true);
 			}
+			
+			/*$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+			//$header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+			//$header = substr($content, 0, $header_size);
+			//$body = substr($content, $header_size);
+			if(!empty($order)) {
+				$order->add_order_note("HEADER: $header");
+				$order->add_order_note("BODY: $body");
+			}
+			if ($httpcode >= 400) {
+				$response = array("errors"=>array('message' => "$header -- $body", 'parameter' => 'HTTP', 'type' => $httpcode));
+				return $response;
+			}
+			return json_decode($body, true);
+			*/
+			return json_decode($content, true);
 		}
 		
 		function send_pj_email($order, $txnid) {
@@ -495,7 +510,6 @@ function payjunction_rest_init() {
 				$payjunction_request['amountBase'] = sprintf("%.2f", $order->get_total());
 				$payjunction_request['note'] .= "\nWooCommerce module was unable to determine the tax and shipping, processed as a total amount instead.";
 				$payjunction_request['note'] .= sprintf("\nOrder Total: %.2f\nComputed Total: %.2f", $order->get_total(), $total_amount);
-				$payjunction_request['note'] .= http_build_query($order);
 			}
 			
 			if ($this->dynavsmode) {
@@ -512,7 +526,7 @@ function payjunction_rest_init() {
 			// Build the query string...
 			$post = http_build_query($payjunction_request);
 			
-			$content = $this->process_rest_request('POST', $post);
+			$content = $this->process_rest_request('POST', $post, null, $order);
 			
 			if (isset($content['transactionId'])) { // Valid response
 			    
