@@ -412,6 +412,7 @@ function payjunction_rest_init() {
 			curl_close($ch);
 			
 			if ($curl_errno) {
+				if ($order) $order->add_order_note("Curl Error" . $curl_errno . " - " . $curl_error);
 				$response = array("errors"=>array('message' => "cURL Error - $curl_errno: $curl_error", 'parameter' => 'cURL', 'type' => $curl_errno));
 				return $response;
 			}
@@ -469,7 +470,7 @@ function payjunction_rest_init() {
 			if ($this->dbg) $order->add_order_note("Debugging enabled");
 
 			$payjunction_request = array(
-				'amountBase' => $order->get_subtotal(),
+				'amountBase' => number_format((float)$order->get_subtotal(), 2, ".", ""),
 				'amountShipping' => '',
 				'amountTax' => '',
 				'cardNumber' => $_POST['ccnum'],
@@ -559,13 +560,6 @@ function payjunction_rest_init() {
 			
 			// Build the query string...
 			$post = http_build_query($payjunction_request);
-			
-			// Debugging, DON'T FORGET TO REMOVE THIS!!
-			$error = 'There was at least one unrecoverable error:';
-			wc_add_notice($error);
-			$order->add_order_note($error);
-			
-			return;
 			
 			$content = $this->process_rest_request('POST', $post, null, $order);
 			if ($this->dbg) $order->add_order_note(http_build_query($content));
