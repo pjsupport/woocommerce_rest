@@ -1,6 +1,6 @@
 # PayJunction Gateway Module for WooCommerce
 Gateway Module for WooCommerce using PayJunction REST API
-Current Version: 1.0
+Current Version: 1.0.2
 
 Requirements:
   WordPress version >= 4.1
