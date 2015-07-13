@@ -2,7 +2,7 @@
 /*
 Plugin Name: PayJunction Gateway Module for WooCommerce
 Description: Credit Card Processing Module for WooCommerce using the PayJunction REST API
-Version: 1.0d
+Version: 1.0.1
 Plugin URI: https://company.payjunction.com/support/WooCommerce
 Author: Matthew E. Cooper
 Author URI: https://www.payjunction.com
@@ -502,12 +502,12 @@ function payjunction_rest_init() {
 			if (!$this->simpleamounts) {
 				$total_amount += (float)$order->get_subtotal();
 				if ($order->get_total_shipping()) { // Add shipping amount
-					$payjunction_request['amountShipping'] = sprintf("%.2f", $order->get_total_shipping());
+					$payjunction_request['amountShipping'] = number_format((float)$order->get_total_shipping(), 2, ".", "");
 					$total_amount += (float)$order->get_total_shipping();
 				}
 				
 				if ($order->get_cart_tax()) { // Add tax amount
-					$payjunction_request['amountTax'] = sprintf("%.2f", $order->get_cart_tax());
+					$payjunction_request['amountTax'] = number_format((float)$order->get_cart_tax(), 2, ".", "");
 					$total_amount += $order->get_cart_tax();
 				}
 				
@@ -515,7 +515,7 @@ function payjunction_rest_init() {
 					$tax = (float)$order->get_cart_tax();
 					$s_tax = (float)$order->get_shipping_tax();
 					$total_tax = $tax + $s_tax;
-					$payjunction_request['amountTax'] = sprintf("%.2f", $total_tax);
+					$payjunction_request['amountTax'] = number_format((float)$total_tax, 2, ".", "");
 					$total_amount += (float)$order->get_shipping_tax();
 				}
 				
@@ -526,19 +526,19 @@ function payjunction_rest_init() {
 				}
 				
 				// Make sure that we've added everything together by comparing with the total amount we've collected so far
-				if (sprintf("%.2f", $order->get_total()) != sprintf("%.2f", $total_amount)) {
+				if (number_format((float)$order->get_total(), 2, ".", "") != number_format((float)$total_amount, 2, ".", "")) {
 					
 					// For some reason, we haven't gotten all the costs. Run the base amount as the order total and remove the shipping and tax
 					// to make sure we don't undercharge or overcharge the customer.
 					$payjunction_request['amountTax'] = '';
 					$payjunction_request['amountShipping'] = '';
-					$payjunction_request['amountBase'] = sprintf("%.2f", $order->get_total());
+					$payjunction_request['amountBase'] = number_format((float)$order->get_total(), 2, ".", "");
 					$payjunction_request['note'] .= "\nWooCommerce module was unable to determine the tax and shipping, processed as a total amount instead.";
-					$payjunction_request['note'] .= sprintf("\nOrder Total: %.2f\nComputed Total: %.2f", $order->get_total(), $total_amount);
+					$payjunction_request['note'] .= sprintf("\nOrder Total: %s\nComputed Total: %s", number_format((float)$order->get_total(), 2, ".", ""), number_format((float)$total_amount, 2, ".", ""));
 				}
 			} else {
 				if ($this->dbg) { $order->add_order_note("WC order total: " . $order->get_total()); }
-				$payjunction_request['amountBase'] = sprintf("%.2f", $order->get_total());
+				$payjunction_request['amountBase'] = number_format((float)$order->get_total(), 2, ".", "");
 			}
 			
 			if ($this->dbg) {
@@ -559,6 +559,13 @@ function payjunction_rest_init() {
 			
 			// Build the query string...
 			$post = http_build_query($payjunction_request);
+			
+			// Debugging, DON'T FORGET TO REMOVE THIS!!
+			$error = 'There was at least one unrecoverable error:';
+			wc_add_notice($error);
+			$order->add_order_note($error);
+			
+			return;
 			
 			$content = $this->process_rest_request('POST', $post, null, $order);
 			if ($this->dbg) $order->add_order_note(http_build_query($content));
@@ -666,7 +673,7 @@ function payjunction_rest_init() {
             
             $refund_request = array('action' => 'REFUND', 'transactionId' => $transactionId);
             if (!is_null($amount) && $amount != 0) {
-                $refund_request['amountBase'] = sprintf("%.2f", $amount);
+                $refund_request['amountBase'] = number_format((float)$amount, 2, ".", "");
                 
                 /*  Currently there is a bug that causes the tax to be refunded if the original transaction that we got the ID from
                     had tax included, even if we're only doing a partial refund. To work around this, send 0.00 as the tax amount   */
