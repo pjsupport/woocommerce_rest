@@ -2,7 +2,7 @@
 /*
 Plugin Name: PayJunction Gateway Module for WooCommerce
 Description: Credit Card Processing Module for WooCommerce using the PayJunction REST API
-Version: 1.0.2
+Version: 2.2.3
 Plugin URI: https://company.payjunction.com/support/WooCommerce
 Author: Matthew E. Cooper
 Author URI: https://www.payjunction.com
@@ -39,7 +39,7 @@ function payjunction_rest_init() {
             $this->fraudmsgtext = $this->settings['fraudmsgtext'];
             $this->requestsignature = $this->settings['requestsignature'] == 'yes' ? true : false;
             $this->signotificationemail = $this->settings['signotificationemail'];
-            $this->simpleamounts = $this->settings['simpleamount'] == 'yes' ? true : false;
+            $this->simpleamounts = $this->settings['simpleamounts'] == 'yes' ? true : false;
             $this->dbg = $this->settings['debugging'] == 'yes' ? true : false;
             $this->msg['message'] = '';
             $this->msg['class'] = '';
