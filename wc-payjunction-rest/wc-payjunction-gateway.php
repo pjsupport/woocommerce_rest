@@ -2,7 +2,7 @@
 /*
 Plugin Name: PayJunction Gateway Module for WooCommerce
 Description: Credit Card Processing Module for WooCommerce using the PayJunction REST API
-Version: 2.2.3
+Version: 2.3.1
 Plugin URI: https://company.payjunction.com/support/WooCommerce
 Author: Matthew E. Cooper
 Author URI: https://www.payjunction.com
@@ -205,66 +205,19 @@ function payjunction_rest_init() {
         }
         
         public function admin_options() {
+        	$admin_script = plugins_url('/js/admin_options.js', __FILE__);
+        	echo '<script type="text/javascript" src="'.$admin_script.'"></script>';
 	    	echo '<h3>'.__( 'PayJunction', 'woothemes' ).'</h3>';
 	    	echo '<p>'.__( 'PayJunction works by adding credit card fields on the checkout and then sending the details to PayJunction for verification.', 'woothemes' ).'</p>';
+	    	$no_ssl = '<div class="error"><p>PayJunction is enabled and the <a href="/wp-admin/admin.php?page=wc-settings&tab=checkout&section=">force SSL option</a> is disabled; your checkout is not secure! Please enable SSL and ensure your server has a valid SSL certificate.';
+	    	if ($this->force_ssl == 'no' && $this->enabled == true) echo $no_ssl;
+	    	$no_curl = '<div class="error"><p>The cURL extension for PHP is not installed and transactions will not run!</p></div>';
+	    	if (!function_exists('curl_version')) echo $no_curl;
+	    	echo '<input type="hidden" form="" id="pjrestpluginpath" value="'.plugins_url('credential-check.php', __FILE__).'">';
 	    	echo '<table class="form-table">';
     		$this->generate_settings_html();
 			echo '</table>';
-			?>
-			<script type="text/javascript">
-			/*<! [CDATA[*/
-			    jQuery(function($) {
-			        jQuery('#woocommerce_payjunctionrest_password').attr('type', 'password');
-    			    <?php
-    			    $no_ssl = '<div class="error"><p>PayJunction is enabled and the <a href="/wp-admin/admin.php?page=wc-settings&tab=checkout&section=">force SSL option</a> is disabled; your checkout is not secure! Please enable SSL and ensure your server has a valid SSL certificate.';
-    			    if ($this->force_ssl == 'no' && $this->enabled == true) {
-        			    ?>
-        			    jQuery('body').append('<?php echo $no_ssl ?>');
-        			    <?php
-    			    } 
-    			    if (!function_exists('curl_version')) {
-    			    	$no_curl = '<div class="error"><p>The cURL extension for PHP is not installed and transactions will not run!</p></div>';
-    			    	?>
-    			    	jQuery('body').append('<?php echo $no_curl ?>');
-    			    	<?php
-    			    } ?>
-    			    
-    			    // Add test button for API credentials
-    			    var $apiTest = $('<button>Test Credentials</button>');
-    			    $apiTest.click(function(event) {
-    			       event.preventDefault();
-    			       
-    			       var login = $('#woocommerce_payjunctionrest_login').val();
-    			       var pass = $('#woocommerce_payjunctionrest_password').val();
-    			       
-    			       var credentials = "login=" + encodeURIComponent(login) + "&pass=" + encodeURIComponent(pass);
-    			       
-    			       $.post('<?php echo plugins_url('credential-check.php', __FILE__) ?>', credentials, function(data) {
-    			           var response;
-    			           try {
-    			               response = JSON.parse(data);
-    			           } catch (err) {
-    			               // Do nothing for security reasons but let's give a response
-    			               response = {'status': 'error', 'type': 'Invalid response', 'message': 'Could not parse the response from credential-check.php'};
-    			           } finally {
-        			           if (response['status'] === 'success') {
-        			               alert("Success! Your API login and password are valid.");
-        			           } else if (response['status'] === 'failure') {
-        			               alert("Failure: the API login and password are not valid.");
-        			           } else if (response['status'] === 'error') {
-        			               alert("There was an error:\n" + response['type'] + ":\n" + response['message']);
-        			           } else {
-        			               alert("Could not check credentials due to an unknown error");
-        			           }
-    			           }
-    			       });
-    			    });
-    			    $('#woocommerce_payjunctionrest_password').after($apiTest);
-	            });
-	            
-	            /*]]>*/
-            </script>
-            <?php
+			
         }
         
         function payment_fields() {
@@ -392,6 +345,7 @@ function payjunction_rest_init() {
 			//curl_setopt($ch, CURLOPT_HEADER, 1);
 			curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json', 'X-PJ-Application-Key: ' . $this->appkey));
 			curl_setopt($ch, CURLOPT_USERPWD, $this->login . ':' . $this->password);
+			curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
 			switch($type) {
 				case "POST":
 					curl_setopt($ch, CURLOPT_POST, true);
@@ -417,22 +371,9 @@ function payjunction_rest_init() {
 				return $response;
 			}
 			
-			/*$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-			//$header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-			//$header = substr($content, 0, $header_size);
-			//$body = substr($content, $header_size);
-			if(!empty($order)) {
-				$order->add_order_note("HEADER: $header");
-				$order->add_order_note("BODY: $body");
-			}
-			if ($httpcode >= 400) {
-				$response = array("errors"=>array('message' => "$header -- $body", 'parameter' => 'HTTP', 'type' => $httpcode));
-				return $response;
-			}
-			return json_decode($body, true);
-			*/
 			return json_decode($content, true);
 		}
+		
 		
 		function send_pj_email($order, $txnid) {
 			if (isset($this->signotificationemail) && !empty($this->signotificationemail)) {
@@ -656,6 +597,7 @@ function payjunction_rest_init() {
         }
         
         public function process_refund($order_id, $amount = null, $reason = '') {
+        	$result = false;
             $order = wc_get_order($order_id);
             if (!$order) return false;
             $transactionId = $order->get_transaction_id();
@@ -669,9 +611,16 @@ function payjunction_rest_init() {
             if (!is_null($amount) && $amount != 0) {
                 $refund_request['amountBase'] = number_format((float)$amount, 2, ".", "");
                 
-                /*  Currently there is a bug that causes the tax to be refunded if the original transaction that we got the ID from
+                /*  Currently there is a behavior that causes the tax to be refunded if the original transaction that we got the ID from
                     had tax included, even if we're only doing a partial refund. To work around this, send 0.00 as the tax amount   */
+                    
+                /*  UPDATE 04/21/2017 Issue affects all amount* params, explicitly zeroing out all other amount* params even if they 
+                    are not in use in this module just in case                                                                       */
+                   
                 $refund_request['amountTax'] = "0.00";
+                $refund_request['amountShipping'] = "0.00";
+                $refund_request['amountSurcharge'] = "0.00";
+                $refund_request['amountTip'] = "0.00";
             }
             
             if (!empty($reason)) {
@@ -683,10 +632,10 @@ function payjunction_rest_init() {
             if ($this->dbg) $order->add_order_note(http_build_query($content));
             if (isset($content['transactionId'])) { // Valid transaction
                 if ($content['response']['approved']) {
-                    return true;
+                    $result = true;
                 } else {
                     $order->add_order_note('Refund: ' . $content['response']['message']);
-                    return false;
+                    $result = false;
                 }
             } else {
                 $error = ' Refund - There was at least one unrecoverable error:';
@@ -696,8 +645,10 @@ function payjunction_rest_init() {
         			}
 				}
 				$order->add_order_note($error);
-				return false;
+				$result = false;
             }
+            
+            return $result;
         }
         
     }
